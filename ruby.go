@@ -3,7 +3,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"C"
 )
@@ -12,27 +11,20 @@ var started = false
 var nbLoops = 0
 
 //export StartBackground
-func StartBackground(message *C.char, msSleep C.int) {
+func StartBackground(message *C.char, nbGoroutines C.int) {
 	msg := C.GoString(message) // TODO: duplicate string ?
 	if !started {
 		started = true
-		go func() {
-			fmt.Printf("ruby.go: start goroutine\n")
-			for started {
-				fmt.Printf("ruby.go: %s wait %dms (%d loops)\n", msg, msSleep, nbLoops)
-				<-time.After(time.Duration(msSleep) * time.Millisecond)
-				nbLoops++
-			}
-			fmt.Printf("ruby.go: end goroutine\n")
-		}()
-
-		for i := 0; i < 3; i++ {
-			go func() {
+		fmt.Printf("ruby.go: start %d goroutines. msg: %q\n", nbGoroutines, msg)
+		for i := int64(0); i < int64(nbGoroutines); i++ {
+			go func(id int64) {
 				// Always do something active
 				for started {
-					// loop
+					if id == 0 {
+						nbLoops++
+					}
 				}
-			}()
+			}(i)
 		}
 	}
 }
@@ -40,7 +32,7 @@ func StartBackground(message *C.char, msSleep C.int) {
 //export StopBackground
 func StopBackground() C.int {
   started = false
-	return C.int(nbLoops)
+	return C.int(nbLoops / 1000) // Avoid int overflow
 }
 
 // Ignored, library doesn't need main
